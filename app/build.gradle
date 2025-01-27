@@ -41,6 +41,7 @@ dependencies {
     integrationTestImplementation 'org.testfx:openjfx-monocle:21.0.2'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.18.1'
 }
 
 java {
