@@ -51,7 +51,7 @@ public class InputDate extends Region implements InputView {
         
         grid.add(error, 0, 2);
 
-        Button b = new Button("Cambia orario");
+        Button b = new Button("Cambia Orario");
         GridPane hb = new GridPane();
         ColumnConstraints col = new ColumnConstraints();
         col.setHalignment(HPos.RIGHT);  // Allineamento a destra della colonna
