@@ -1,7 +1,6 @@
 package BACKAPp.presenter;
 
-import org.jetbrains.annotations.NotNull;
 
 public interface InputPresenter {
-  void action(@NotNull String text, @NotNull String text1);
+  void action(String text, String text1);
 }

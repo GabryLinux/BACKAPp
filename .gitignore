@@ -2,3 +2,5 @@
 .vscode
 build
 bin
+app/src/main/java/resources/src
+app/src/main/java/resources/dest

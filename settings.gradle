@@ -8,4 +8,4 @@
  */
 
 rootProject.name = 'BACKAPp'
-include('app')
+include ':app'

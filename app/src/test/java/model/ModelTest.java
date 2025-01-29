@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import BACKAPp.model.Config;
 import BACKAPp.model.Model;
+import BACKAPp.model.Observer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.List;
 
 public class ModelTest {
@@ -39,16 +41,22 @@ public class ModelTest {
         //Verifica che il metodo getBackupsFromDirectory restituisca i file presenti nella directory specificata
 
         Path path1 = mock();
-        when(path1.toString()).thenReturn("f");
         Path path2 = mock();
-        when(path2.toString()).thenReturn("f");
         Path parent = mock();
         when(parent.iterator()).thenReturn(List.of(path1, path2).iterator());
 
-        try (var utilities = mockStatic(Path.class)) {
+        try (
+            var utilities = mockStatic(Path.class); 
+            var files = mockStatic(Files.class)
+        ) {
             utilities.when(() -> Paths.get(any(String.class))).thenReturn(parent);
             Model m = new Model("");
-            assertThat(m.getBackupsFromDirectory("")).containsExactly("f", "f");
+            FileTime p1 = mock();
+            FileTime p2 = mock();
+            files.when(() -> Files.getLastModifiedTime(path1)).thenReturn(p1);
+            files.when(() -> Files.getLastModifiedTime(path2)).thenReturn(p2);
+
+            assertThat(m.getBackupsFromDirectory("")).containsExactly(p1, p2);
         }
     }
 
@@ -59,7 +67,7 @@ public class ModelTest {
          * vengano lanciate le opportune eccezioni
          * con "throw new <eccezione da lanciare>()";
          */
-        Model model = new Model(mock());
+        Model model = new Model("");
         assertThatThrownBy(() -> model.getBackupsFromDirectory(null))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> model.getBackupsFromDirectory(".txt"))
@@ -69,19 +77,27 @@ public class ModelTest {
     @Test
     public void sortedFilesFromPathTest() throws IOException{
 
-        //Verifica che i file vengano restituiti in ordine alfabetico decrescente
+        //Verifica che i file vengano restituiti in ordine di data decrescente di ultima modifica
 
         Path path1 = mock();
-        when(path1.toString()).thenReturn("file1");
         Path path2 = mock();
-        when(path2.toString()).thenReturn("file2");
         Path parent = mock();
         when(parent.iterator()).thenReturn(List.of(path1, path2).iterator());
 
-        try (var utilities = mockStatic(Path.class)) {
+        try (
+            var utilities = mockStatic(Path.class); 
+            var files = mockStatic(Files.class)
+        ) {
             utilities.when(() -> Paths.get(any(String.class))).thenReturn(parent);
             Model m = new Model("");
-            assertThat(m.getBackupsFromDirectory("")).containsExactly("file2", "file1");
+            FileTime p1 = mock();
+            FileTime p2 = mock();
+            files.when(() -> Files.getLastModifiedTime(path1)).thenReturn(p1);
+            files.when(() -> Files.getLastModifiedTime(path2)).thenReturn(p2);
+
+            when(p1.compareTo(p2)).thenReturn(-1);
+            when(p2.compareTo(p1)).thenReturn(1);
+            assertThat(m.getBackupsFromDirectory("")).containsExactly(p2, p1);
         }
     }
 
@@ -97,10 +113,16 @@ public class ModelTest {
         Path parent = mock();
         when(parent.iterator()).thenReturn(List.of(path1, path2).iterator());
         
-        try (var utilities = mockStatic(Path.class)) {
+        try (
+            var utilities = mockStatic(Path.class); 
+            var files = mockStatic(Files.class)
+        ) {
             utilities.when(() -> Paths.get(any(String.class))).thenReturn(parent);
             Model m = new Model("");
-            assertThat(m.getBackupsFromDirectory("txt")).containsExactly("file1.txt");
+            FileTime p1 = mock();
+            files.when(() -> Files.getLastModifiedTime(path1)).thenReturn(p1);
+
+            assertThat(m.getBackupsFromDirectory("")).containsExactly(p1);
         }
     }
 
@@ -128,7 +150,7 @@ public class ModelTest {
                 (mock, context) -> when(mock.readLine()).thenReturn(
                         "<config><sourcePath>MyApp</sourcePath><destinationPath>1.0</destinationPath><date>11:05</date></config>"))) {
             try(MockedConstruction<XmlMapper> mockedMapper = mockConstruction(XmlMapper.class)){
-                Model model = new Model(mock());
+                Model model = new Model("");
                 verify(mockedMapper.constructed().get(0)
                 .readValue("<config><sourcePath>MyApp</sourcePath><destinationPath>1.0</destinationPath><date>11:05</date></config>", 
                 Config.class)
@@ -144,7 +166,7 @@ public class ModelTest {
 
         try(MockedConstruction<XmlMapper> mockedMapper = mockConstruction(XmlMapper.class,
         (mocked, context) -> when(mocked.readValue(any(String.class),Config.class)).thenReturn(new Config("MyApp", "1.0", "11:05")))){
-            Model model = new Model(mock());
+            Model model = new Model("");
             assertThat(model.getConfig()).isEqualTo(new Config("MyApp", "1.0", "11:05"));
         }
     }
@@ -156,7 +178,7 @@ public class ModelTest {
 
         try(var path = mockStatic(Path.class)){
             try(MockedConstruction<XmlMapper> mockedMapper = mockConstruction(XmlMapper.class)){
-                Model model = new Model(mock());
+                Model model = new Model("");
                 model.setConfig(new Config("MyApp", "1.0", "11:05"));
                 verify(mockedMapper.constructed().get(0).writeValueAsString(new Config("MyApp", "1.0", "11:05")));
                 String xml = "<config><sourcePath>MyApp</sourcePath><destinationPath>1.0</destinationPath><date>11:05</date></config>";
@@ -164,4 +186,30 @@ public class ModelTest {
             }
         }
     }
+
+    @Test
+    public void notifyListenersTest() throws IOException {
+        
+        //Verifica che il metodo notifyObservers() chiami il metodo update() di tutti gli Observer
+
+        Observer observer1 = mock(Observer.class);
+        Observer observer2 = mock(Observer.class);
+        Model model = new Model("");
+        model.addObserver(observer1);
+        model.addObserver(observer2);
+        model.notifyObservers();
+        verify(observer1).update(model);
+        verify(observer2).update(model);
+    }
+
+    @Test
+    public void getConfigPathTest() throws IOException {
+
+        //Verifica che il metodo getConfigPath() restituisca il percorso del file di configurazione
+
+        Model model = new Model("");
+        assertThat(model.getConfigPath()).isEqualTo(Paths.get(""));
+    }
+
+    
 }

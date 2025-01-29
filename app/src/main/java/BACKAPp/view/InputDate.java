@@ -34,7 +34,7 @@ public class InputDate extends Region implements InputView {
         setBackground(new Background(new BackgroundFill(Color.LIGHTBLUE, new CornerRadii(5.0), Insets.EMPTY)));
         setBorder(new Border(new BorderStroke(null, BorderStrokeStyle.SOLID, new CornerRadii(5.0), new BorderWidths(2))));
 
-        error = new Label("A");
+        error = new Label();
         
 
 
@@ -49,9 +49,7 @@ public class InputDate extends Region implements InputView {
         grid.setPadding(new Insets(10, 0, 0, 10));
         grid.add(text, 0, 1);
         
-        grid.add(error, 0, 2);
-
-        Button b = new Button("Cambia OrariO");
+        Button b = new Button("Cambia Orario");
         GridPane hb = new GridPane();
         ColumnConstraints col = new ColumnConstraints();
         col.setHalignment(HPos.RIGHT);  // Allineamento a destra della colonna
@@ -61,9 +59,10 @@ public class InputDate extends Region implements InputView {
         row.setVgrow(Priority.ALWAYS);
 
         hb.getColumnConstraints().add(col);
-        hb.getRowConstraints().add(row);
-        hb.add(b, 0, 0);
-        grid.add(hb, 0, grid.getRowCount());        
+        hb.getRowConstraints().add(row);        
+        hb.add(b, 1, 0);
+        hb.add(error, 0, 0);
+        grid.add(hb, 0, grid.getRowCount());
 
         this.getChildren().add(grid);
     }
